@@ -3,21 +3,19 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
-    container:
-      image: node:14.16
-      env:
-        NODE_ENV: development
-      ports:
-        -80
-      volumes: /etcd-v3.5.8-serviceRaft:/etcd-v3.5.8-serviceRaft
+    # container:
+    #   image: node:14.16
+    #   env:
+    #     NODE_ENV: development
+    #   volumes: /etcd-v3.5.8-serviceRaft:/etcd-v3.5.8-serviceRaft
     strategy:
       fail-fast: true
       matrix:
         target:
         - linux-amd64-functional
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-go@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v3
       with:
         go-version: "1.19.8"
     - run: date
