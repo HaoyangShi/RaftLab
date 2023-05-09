@@ -6,8 +6,6 @@
 /release
 /bin
 /data
-/tests
-/tools
 *.etcd
 *.log
 *.swp
