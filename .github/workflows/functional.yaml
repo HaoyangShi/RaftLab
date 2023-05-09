@@ -3,6 +3,8 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    container:
+      volumes: /etcd-v3.5.8-serviceRaft:/etcd-v3.5.8-serviceRaft
     strategy:
       fail-fast: true
       matrix:
