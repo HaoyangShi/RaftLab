@@ -4,6 +4,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
+      image: node:14.16
+      env:
+        NODE_ENV: development
+      ports:
+        -80
       volumes: /etcd-v3.5.8-serviceRaft:/etcd-v3.5.8-serviceRaft
     strategy:
       fail-fast: true
