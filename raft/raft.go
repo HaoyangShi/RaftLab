@@ -620,10 +620,12 @@ func (r *raft) reset(term uint64) {
 
 func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 	li := r.raftLog.lastIndex()
-	for i := range es {
-		es[i].Term = r.Term
-		es[i].Index = li + 1 + uint64(i)
-	}
+
+	// TODO(RaftLab Replication) Replication_step1: Add Entries to local raftLog.
+	// Actually set the term and the index of es.
+	panic("RaftLab: Replication_step1:::Add your code here.")
+	
+
 	// Track the size of this uncommitted proposal.
 	if !r.increaseUncommittedSize(es) {
 		r.logger.Debugf(
@@ -643,11 +645,15 @@ func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
 
 // tickElection is run by followers and candidates after r.electionTimeout.
 func (r *raft) tickElection() {
-	r.electionElapsed++
+	// TODO(RaftLab Election) Leader_Election_step1: Advance electionElapsed.
+	panic("RaftLab: Leader_Election_step1:::Add your code here.")
+	
 
 	if r.promotable() && r.pastElectionTimeout() {
-		r.electionElapsed = 0
-		r.Step(pb.Message{From: r.id, Type: pb.MsgHup})
+		// TODO(RaftLab Election) Leader_Election_step2: Start a new round of election.
+		// Reset the electionElapsed and step down the MsgHup Message
+		panic("RaftLab: Leader_Election_step2:::Add your code here.")
+		
 	}
 }
 
@@ -691,11 +697,10 @@ func (r *raft) becomeCandidate() {
 	if r.state == StateLeader {
 		panic("invalid transition [leader -> candidate]")
 	}
-	r.step = stepCandidate
-	r.reset(r.Term + 1)
-	r.tick = r.tickElection
-	r.Vote = r.id
-	r.state = StateCandidate
+	// TODO(RaftLab Election) Leader_Election_step3: Become a candidate.
+	// Set the the state, term, vote, tick function and step function.
+	panic("RaftLab: Leader_Election_step3::: Add your code here.")
+	
 	r.logger.Infof("%x became candidate at term %d", r.id, r.Term)
 }
 
@@ -791,8 +796,12 @@ func (r *raft) campaign(t CampaignType) {
 		term = r.Term + 1
 	} else {
 		r.becomeCandidate()
-		voteMsg = pb.MsgVote
-		term = r.Term
+
+		// TODO(RaftLab Election) Leader_Election_step4: Organized the MsgVote messages.
+		// Set the voteMsg and term. 
+		// tips: You can reference to the campaignPreElection case.
+		panic("RaftLab: Leader_Election_step4::: Add your code here.")
+		
 	}
 	if _, _, res := r.poll(r.id, voteRespMsgType(voteMsg), true); res == quorum.VoteWon {
 		// We won the election after voting for ourselves (which must mean that
@@ -959,7 +968,12 @@ func (r *raft) Step(m pb.Message) error {
 			// the message (it ignores all out of date messages).
 			// The term in the original message and current local term are the
 			// same in the case of regular votes, but different for pre-votes.
-			r.send(pb.Message{To: m.From, Term: m.Term, Type: voteRespMsgType(m.Type)})
+
+			// TODO(RaftLab Election) Leader_election_step5: Response to MsgVote if vote.
+			// Send MsgVoteResp messages to the candidate.
+			// tips: you can reference to the case of rejecting to vote below.
+			panic("RaftLab: Leader_Election_step5::: Add your code here.")
+			
 			if m.Type == pb.MsgVote {
 				// Only record real votes.
 				r.electionElapsed = 0
@@ -1067,7 +1081,11 @@ func stepLeader(r *raft, m pb.Message) error {
 		if !r.appendEntry(m.Entries...) {
 			return ErrProposalDropped
 		}
-		r.bcastAppend()
+
+		// TODO(RaftLab Replication) Replication_step2: Leader broadcasts log entries.
+		// tips: Using the existing function!
+		panic("RaftLab: Replication_step2:::Add your code here.")
+		
 		return nil
 	case pb.MsgReadIndex:
 		// only one voting member (the leader) in the cluster
@@ -1250,7 +1268,11 @@ func stepLeader(r *raft, m pb.Message) error {
 					pr.Inflights.FreeLE(m.Index)
 				}
 
-				if r.maybeCommit() {
+				// TODO(RaftLab Replication) Replication_step4: Leader tries to commit new log entries 
+				//                                  after receiving successful replication responses.
+				// tips: Using existing function!
+				panic("RaftLog: Replication_step4:::Replace *** with your code.")
+				if *** your code ***{
 					// committed index has progressed for the term, so it is safe
 					// to respond to pending read index requests
 					releasePendingReadIndexMessages(r)
@@ -1398,8 +1420,12 @@ func stepCandidate(r *raft, m pb.Message) error {
 			if r.state == StatePreCandidate {
 				r.campaign(campaignElection)
 			} else {
-				r.becomeLeader()
-				r.bcastAppend()
+				// TODO(RaftLab Election) Leader_Election_step6: The candidate becomes leader 
+				// 								and broadcast messages to announce its authority.
+				// Change state into leader and broadcast authority by append entries messages.
+				// tips: Using existing functions.
+				panic("RaftLab: Leader_Election_step6::: Add your code here.")
+				
 			}
 		case quorum.VoteLost:
 			// pb.MsgPreVoteResp contains future term of pre-candidate
@@ -1427,7 +1453,11 @@ func stepFollower(r *raft, m pb.Message) error {
 	case pb.MsgApp:
 		r.electionElapsed = 0
 		r.lead = m.From
-		r.handleAppendEntries(m)
+
+		//TODO(RaftLab Replication) Replication_step3: Followers handle append entries messages.
+		// tips: Using existing functions!
+		panic("RaftLab: Replication_step3:::Add your code here.")
+		
 	case pb.MsgHeartbeat:
 		r.electionElapsed = 0
 		r.lead = m.From
