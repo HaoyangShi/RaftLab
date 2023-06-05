@@ -1,210 +1,34 @@
-# etcd
+# 实现Raft算法
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/etcd-io/etcd?style=flat-square)](https://goreportcard.com/report/github.com/etcd-io/etcd)
-[![Coverage](https://codecov.io/gh/etcd-io/etcd/branch/master/graph/badge.svg)](https://codecov.io/gh/etcd-io/etcd)
-[![Tests](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/tests.yaml)
-[![asset-transparency](https://github.com/etcd-io/etcd/actions/workflows/asset-transparency.yaml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/asset-transparency.yaml)
-[![codeql-analysis](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/codeql-analysis.yml)
-[![self-hosted-linux-arm64-graviton2-tests](https://github.com/etcd-io/etcd/actions/workflows/self-hosted-linux-arm64-graviton2-tests.yml/badge.svg)](https://github.com/etcd-io/etcd/actions/workflows/self-hosted-linux-arm64-graviton2-tests.yml)
-[![Docs](https://img.shields.io/badge/docs-latest-green.svg)](https://etcd.io/docs)
-[![Godoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](https://godoc.org/github.com/etcd-io/etcd)
-[![Releases](https://img.shields.io/github/release/etcd-io/etcd/all.svg?style=flat-square)](https://github.com/etcd-io/etcd/releases)
-[![LICENSE](https://img.shields.io/github/license/etcd-io/etcd.svg?style=flat-square)](https://github.com/etcd-io/etcd/blob/main/LICENSE)
+本实验基于etcd代码改动而成。主要任务为实现etcd中Raft算法。
 
-**Note**: The `main` branch may be in an *unstable or even broken state* during development. For stable versions, see [releases][github-release].
+此次实验分为两部分，包括领导者选举及日志复制。请根据注释提示，完成代码填充，所有需要填充的代码均在./raft/raft.go文件中。
 
-![etcd Logo](logos/etcd-horizontal-color.svg)
+在完成实验后，可运行 ./raft/raftLab_test.sh以检验是否实现正确
 
-etcd is a distributed reliable key-value store for the most critical data of a distributed system, with a focus on being:
+## 1 前期准备
 
-* *Simple*: well-defined, user-facing API (gRPC)
-* *Secure*: automatic TLS with optional client cert authentication
-* *Fast*: benchmarked 10,000 writes/sec
-* *Reliable*: properly distributed using Raft
+请确保已经安装 go>=1.19, make
 
-etcd is written in Go and uses the [Raft][] consensus algorithm to manage a highly-available replicated log.
+## 2 领导者选举
 
-etcd is used [in production by many companies](./ADOPTERS.md), and the development team stands behind it in critical deployment scenarios, where etcd is frequently teamed with applications such as [Kubernetes][k8s], [locksmith][], [vulcand][], [Doorman][], and many others. Reliability is further ensured by [**rigorous testing**](https://github.com/etcd-io/etcd/tree/main/tests/functional).
+领导者选举部分注释标志为RaftLab Election。请根据注释的步骤，根据选举的逻辑将代码补充完整。
 
-See [etcdctl][etcdctl] for a simple command line client.
+![image-20230605142807063](./Documentation/leaderElection.png)
 
-[raft]: https://raft.github.io/
-[k8s]: http://kubernetes.io/
-[doorman]: https://github.com/youtube/doorman
-[locksmith]: https://github.com/coreos/locksmith
-[vulcand]: https://github.com/vulcand/vulcand
-[etcdctl]: https://github.com/etcd-io/etcd/tree/main/etcdctl
+follower节点tick函数推进当前时间计数，如果发现一段时间内都未收到领导者消息，触发选举条件。其转变状态为candidate，并向集群中广播请求投票消息MsgVote。节点收到请求投票消息MsgVote，根据term和日志判断是否可以投票，回复投票消息MsgVoteResp。当candidate可以收到多数节点的投票消息，则成功当选，转变状态为leader并广播通知权威。
 
-## Community meetings
+## 3 日志复制
 
-etcd contributors and maintainers have monthly (every four weeks) meetings at 11:00 AM (USA Pacific) on Thursday.
+日志复制部分注释标志为RaftLab Replication，请根据注释的步骤，根据日志复制的逻辑将代码补充完整。
 
-An initial agenda will be posted to the [shared Google docs][shared-meeting-notes] a day before each meeting, and everyone is welcome to suggest additional topics or other agendas.
+![image-20230605143645831](./Documentation/logReplication.png)
 
-[shared-meeting-notes]: https://docs.google.com/document/d/16XEGyPBisZvmmoIHSZzv__LoyOeluC5a4x353CX0SIM/edit
+当上层发送MsgProp，说明有新的写入，触发开始进行日志项复制。领导者收到MsgProp消息，将新的日志项加入本地，然后向集群中广播日志复制消息MsgApp。其他节点收到日志复制消息MsgApp，调用handleAppendEntries函数尝试将复制到本地，将复制结果回复给领导者msgAppResp。当领导者收到多数节点复制成功的回复时，提交日志项，并将结果广播给其他节点。
 
-
-Time:
-- [Jan 10th, 2019 11:00 AM video](https://www.youtube.com/watch?v=0Cphtbd1OSc&feature=youtu.be)
-- [Feb 7th, 2019 11:00 AM video](https://youtu.be/U80b--oAlYM)
-- [Mar 7th, 2019 11:00 AM video](https://youtu.be/w9TI5B7D1zg)
-- [Apr 4th, 2019 11:00 AM video](https://youtu.be/oqQR2XH1L_A)
-- [May 2nd, 2019 11:00 AM video](https://youtu.be/wFwQePuDWVw)
-- [May 30th, 2019 11:00 AM video](https://youtu.be/2t1R5NATYG4)
-- [Jul 11th, 2019 11:00 AM video](https://youtu.be/k_FZEipWD6Y)
-- [Jul 25, 2019 11:00 AM video](https://youtu.be/VSUJTACO93I)
-- [Aug 22, 2019 11:00 AM video](https://youtu.be/6IBQ-VxQmuM)
-- [Sep 19, 2019 11:00 AM video](https://youtu.be/SqfxU9DhBOc)
-- Nov 14, 2019 11:00 AM
-- Dec 12, 2019 11:00 AM
-- Jan 09, 2020 11:00 AM
-- Feb 06, 2020 11:00 AM
-- Mar 05, 2020 11:00 AM
-- Apr 02, 2020 11:00 AM
-- Apr 30, 2020 11:00 AM
-- May 28, 2020 11:00 AM
-- Jun 25, 2020 11:00 AM
-- Jul 23, 2020 11:00 AM
-- Aug 20, 2020 11:00 AM
-- Sep 17, 2020 11:00 AM
-- Oct 15, 2020 11:00 AM
-- Nov 12, 2020 11:00 AM
-- Dec 10, 2020 11:00 AM
-
-Join Hangouts Meet: [meet.google.com/umg-nrxn-qvs](https://meet.google.com/umg-nrxn-qvs)
-
-Join by phone: +1 405-792-0633‬ PIN: ‪299 906‬#
-
-
-## Getting started
-
-### Getting etcd
-
-The easiest way to get etcd is to use one of the pre-built release binaries which are available for OSX, Linux, Windows, and Docker on the [release page][github-release].
-
-For more installation guides, please check out [play.etcd.io](http://play.etcd.io) and [operating etcd](https://etcd.io/docs/latest/op-guide).
-
-For those wanting to try the very latest version, [build the latest version of etcd][dl-build] from the `main` branch. This first needs [*Go*](https://golang.org/) installed ([version 1.16+](/go.mod#L3) is required). All development occurs on `main`, including new features and bug fixes. Bug fixes are first targeted at `main` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
-
-[github-release]: https://github.com/etcd-io/etcd/releases
-[branch-management]: https://etcd.io/docs/latest/branch_management
-[dl-build]: https://etcd.io/docs/latest/dl-build#build-the-latest-version
-
-### Running etcd
-
-First start a single-member cluster of etcd.
-
-If etcd is installed using the [pre-built release binaries][github-release], run it from the installation location as below:
+## 4 测试
 
 ```bash
-/tmp/etcd-download-test/etcd
+cd raft
+./raftLab_test.sh
 ```
-
-The etcd command can be simply run as such if it is moved to the system path as below:
-
-```bash
-mv /tmp/etcd-download-test/etcd /usr/local/bin/
-etcd
-```
-
-If etcd is [built from the main branch][dl-build], run it as below:
-
-```bash
-./bin/etcd
-```
-
-This will bring up etcd listening on port 2379 for client communication and on port 2380 for server-to-server communication.
-
-Next, let's set a single key, and then retrieve it:
-
-```
-etcdctl put mykey "this is awesome"
-etcdctl get mykey
-```
-
-etcd is now running and serving client requests. For more, please check out:
-
-- [Interactive etcd playground](http://play.etcd.io)
-- [Animated quick demo](https://etcd.io/docs/latest/demo)
-
-### etcd TCP ports
-
-The [official etcd ports][iana-ports] are 2379 for client requests, and 2380 for peer communication.
-
-[iana-ports]: http://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.txt
-
-### Running a local etcd cluster
-
-First install [goreman](https://github.com/mattn/goreman), which manages Procfile-based applications.
-
-Our [Procfile script](./Procfile) will set up a local example cluster. Start it with:
-
-```bash
-goreman start
-```
-
-This will bring up 3 etcd members `infra1`, `infra2` and `infra3` and optionally etcd `grpc-proxy`, which runs locally and composes a cluster.
-
-Every cluster member and proxy accepts key value reads and key value writes.
-
-Follow the steps in [Procfile.learner](./Procfile.learner) to add a learner node to the cluster. Start the learner node with:
-
-```bash
-goreman -f ./Procfile.learner start
-```
-
-### Next steps
-
-Now it's time to dig into the full etcd API and other guides.
-
-- Read the full [documentation][].
-- Explore the full gRPC [API][].
-- Set up a [multi-machine cluster][clustering].
-- Learn the [config format, env variables and flags][configuration].
-- Find [language bindings and tools][integrations].
-- Use TLS to [secure an etcd cluster][security].
-- [Tune etcd][tuning].
-
-[documentation]: https://etcd.io/docs/latest
-[api]: https://etcd.io/docs/latest/learning/api
-[clustering]: https://etcd.io/docs/latest/op-guide/clustering
-[configuration]: https://etcd.io/docs/latest/op-guide/configuration
-[integrations]: https://etcd.io/docs/latest/integrations
-[security]: https://etcd.io/docs/latest/op-guide/security
-[tuning]: https://etcd.io/docs/latest/tuning
-
-## Contact
-
-- Mailing list: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
-- IRC: #[etcd](irc://irc.freenode.org:6667/#etcd) on freenode.org
-- Planning/Roadmap: [milestones](https://github.com/etcd-io/etcd/milestones), [roadmap](./ROADMAP.md)
-- Bugs: [issues](https://github.com/etcd-io/etcd/issues)
-
-## Contributing
-
-See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
-
-## Reporting bugs
-
-See [reporting bugs](https://etcd.io/docs/latest/reporting-bugs) for details about reporting any issues.
-
-## Reporting a security vulnerability
-
-See [security disclosure and release process](security/README.md) for details on how to report a security vulnerability and how the etcd team manages it.
-
-## Issue and PR management
-
-See [issue triage guidelines](https://etcd.io/docs/current/triage/issues/) for details on how issues are managed.
-
-See [PR management](https://etcd.io/docs/current/triage/prs/) for guidelines on how pull requests are managed.
-
-## etcd Emeritus Maintainers
-
-These emeritus maintainers dedicated a part of their career to etcd and reviewed code, triaged bugs, and pushed the project forward over a substantial period of time. Their contribution is greatly appreciated.
-
-* Fanmin Shi
-* Anthony Romano
-
-### License
-
-etcd is under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
